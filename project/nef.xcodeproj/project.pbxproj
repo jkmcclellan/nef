@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1121CAC6231820F0007B834B /* BowEffects in Frameworks */ = {isa = PBXBuildFile; productRef = 1121CAC5231820F0007B834B /* BowEffects */; };
+		1121CAC8231820F0007B834B /* BowOptics in Frameworks */ = {isa = PBXBuildFile; productRef = 1121CAC7231820F0007B834B /* BowOptics */; };
+		1121CACA231820F0007B834B /* Bow in Frameworks */ = {isa = PBXBuildFile; productRef = 1121CAC9231820F0007B834B /* Bow */; };
 		8B12D79F22D6235200D05A70 /* NefJekyll.h in Headers */ = {isa = PBXBuildFile; fileRef = 8B12D79D22D6235200D05A70 /* NefJekyll.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		8B12D7A422D6238300D05A70 /* Jekyll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3CB85522D392C000919F36 /* Jekyll.swift */; };
 		8B12D7B822D63EAD00D05A70 /* Common.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 8BF75F5722CA637B00EC53A1 /* Common.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -397,7 +400,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1121CAC8231820F0007B834B /* BowOptics in Frameworks */,
+				1121CAC6231820F0007B834B /* BowEffects in Frameworks */,
 				8B6AA7552304298E0008C1D0 /* Swiftline in Frameworks */,
+				1121CACA231820F0007B834B /* Bow in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -941,6 +947,9 @@
 			name = iPad;
 			packageProductDependencies = (
 				8B6AA7542304298E0008C1D0 /* Swiftline */,
+				1121CAC5231820F0007B834B /* BowEffects */,
+				1121CAC7231820F0007B834B /* BowOptics */,
+				1121CAC9231820F0007B834B /* Bow */,
 			);
 			productName = iPad;
 			productReference = 8B6AA74C230429420008C1D0 /* iPad */;
@@ -1125,6 +1134,7 @@
 			mainGroup = 8B6FC57C221ECE6A008F7694;
 			packageReferences = (
 				8B6AA7532304298E0008C1D0 /* XCRemoteSwiftPackageReference "Swiftline" */,
+				1121CAC4231820F0007B834B /* XCRemoteSwiftPackageReference "bow" */,
 			);
 			productRefGroup = 8B6FC586221ECE6A008F7694 /* Products */;
 			projectDirPath = "";
@@ -2233,6 +2243,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		1121CAC4231820F0007B834B /* XCRemoteSwiftPackageReference "bow" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/bow-swift/bow";
+			requirement = {
+				branch = effects;
+				kind = branch;
+			};
+		};
 		8B6AA7532304298E0008C1D0 /* XCRemoteSwiftPackageReference "Swiftline" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/bow-swift/Swiftline.git";
@@ -2244,6 +2262,21 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		1121CAC5231820F0007B834B /* BowEffects */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1121CAC4231820F0007B834B /* XCRemoteSwiftPackageReference "bow" */;
+			productName = BowEffects;
+		};
+		1121CAC7231820F0007B834B /* BowOptics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1121CAC4231820F0007B834B /* XCRemoteSwiftPackageReference "bow" */;
+			productName = BowOptics;
+		};
+		1121CAC9231820F0007B834B /* Bow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1121CAC4231820F0007B834B /* XCRemoteSwiftPackageReference "bow" */;
+			productName = Bow;
+		};
 		8B6AA7542304298E0008C1D0 /* Swiftline */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8B6AA7532304298E0008C1D0 /* XCRemoteSwiftPackageReference "Swiftline" */;
