@@ -3,6 +3,8 @@
 import Foundation
 import Common
 import Swiftline
+import Bow
+import BowEffects
 
 struct Playground {
     private let resolvePath: ResolvePath
@@ -14,46 +16,46 @@ struct Playground {
         self.console = console
     }
     
-    func build(cached: Bool) -> Result<Void, PlaygroundError> {
+    func build(cached: Bool) -> Either<PlaygroundError, Void> {
         return stepCleanUp(deintegrate: !cached)
             .flatMap(stepStructure)
             .flatMap(stepChekout)
             .flatMap(stepGetModules)
             .flatMap(stepPlayground)
-            .flatMap { _ in stepCleanUp(deintegrate: false) }
+            .flatMap { _ in self.stepCleanUp(deintegrate: false) }^
     }
     
-    private func stepStructure() -> Result<Void, PlaygroundError> {
+    private func stepStructure() -> Either<PlaygroundError, Void> {
         console.printStep(information: "Creating swift playground structure (\(resolvePath.projectName))")
         
         if makeStructure(projectPath: resolvePath.projectPath, buildPath: resolvePath.buildPath) {
             console.printStatus(success: true)
-            return .success(())
+            return .right(())
         } else {
             console.printStatus(success: false)
-            return .failure(.structure)
+            return .left(.structure)
         }
     }
     
-    private func stepChekout() -> Result<[String], PlaygroundError> {
+    private func stepChekout() -> Either<PlaygroundError, [String]> {
         console.printStep(information: "Downloading dependencies...")
         
         guard buildPackage(resolvePath.packagePath, nefPath: resolvePath.nefPath, buildPath: resolvePath.buildPath) else {
             console.printStatus(success: false)
-            return .failure(.package(packagePath: resolvePath.packagePath))
+            return .left(.package(packagePath: resolvePath.packagePath))
         }
         
         let repos = repositories(checkoutPath: resolvePath.checkoutPath)
         if repos.count > 0 {
             console.printStatus(success: true)
-            return .success(repos)
+            return .right(repos)
         } else {
             console.printStatus(success: false)
-            return .failure(.checkout)
+            return .left(.checkout)
         }
     }
     
-    private func stepGetModules(fromRepositories repos: [String]) -> Result<[Module], PlaygroundError> {
+    private func stepGetModules(fromRepositories repos: [String]) -> Either<PlaygroundError, [Module]> {
         console.printStep(information: "Get modules from repositories")
         
         let modules = repos.flatMap {
@@ -63,31 +65,31 @@ struct Playground {
         if modules.count > 0 {
             console.printStatus(success: true)
             modules.forEach { console.printSubstep(information: $0.name) }
-            return .success(modules)
+            return .right(modules)
         } else {
             console.printStatus(success: false)
-            return .failure(.checkout)
+            return .left(.checkout)
         }
     }
     
-    private func stepPlayground(modules: [Module]) -> Result<Void, PlaygroundError> {
+    private func stepPlayground(modules: [Module]) -> Either<PlaygroundError, Void> {
         console.printStep(information: "Building Swift Playground...")
         
         let result = makePlaygroundBook(modules: modules)
-        let createdPaygroundBook = (try? result.get()) != nil
+        let createdPaygroundBook = result.isRight
         
         console.printStatus(success: createdPaygroundBook)
         return result
     }
     
-    private func stepCleanUp(deintegrate: Bool) -> Result<Void, PlaygroundError> {
+    private func stepCleanUp(deintegrate: Bool) -> Either<PlaygroundError, Void> {
         console.printStep(information: "Clean up generated files for building")
         
         removePackageResolved()
         if (deintegrate) { cleanBuildFolder() }
         
         console.printStatus(success: true)
-        return .success(())
+        return .right(())
     }
     
     // MARK: private methods <step helpers>
@@ -102,11 +104,11 @@ struct Playground {
         }
     }
     
-    private func makePlaygroundBook(modules: [Module]) -> Result<Void, PlaygroundError> {
+    private func makePlaygroundBook(modules: [Module]) -> Either<PlaygroundError, Void> {
         storage.remove(filePath: resolvePath.playgroundPath)
         return PlaygroundBook(name: "nef", path: resolvePath.playgroundPath, storage: storage)
                 .create(withModules: modules)
-                .flatMapError { _ in .failure(.playgroundBook) }
+                .bimap({ _ in PlaygroundError.playgroundBook }, id)
     }
     
     private func removePackageResolved() {

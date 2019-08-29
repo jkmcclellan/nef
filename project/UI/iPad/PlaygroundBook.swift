@@ -3,12 +3,20 @@
 import Foundation
 import Common
 import AppKit
+import Bow
+import BowEffects
 
 enum PlaygroundBookError: Error {
     case manifest
     case invalidModule
     case page
     case resource
+}
+
+extension Storage {
+    func copyIO(_ filePath: String, to modulePath: String) -> IO<StorageError, String> {
+        return IO.invoke { self.copy(filePath, to: modulePath) }
+    }
 }
 
 class PlaygroundBook {
@@ -22,16 +30,16 @@ class PlaygroundBook {
         self.storage = storage
     }
     
-    func create(withModules modules: [Module]) -> Result<Void, PlaygroundBookError> {
+    func create(withModules modules: [Module]) -> Either<PlaygroundBookError, Void> {
         let chapterName = "Chapter \(name)"
         let pageName = name
         
         return create(chapterName: chapterName, pageName: pageName)
-                .flatMap { _ in addModules(modules) }
+                .flatMap { _ in self.addModules(modules) }^
     }
     
     // MARK: private methods <structure>
-    private func create(chapterName: String, pageName: String) -> Result<Void, PlaygroundBookError> {
+    private func create(chapterName: String, pageName: String) -> Either<PlaygroundBookError, Void> {
         let contentsPath = "\(path)/Contents"
         let resourcesPath = "\(contentsPath)/PrivateResources"
         let chapterPath = "\(contentsPath)/Chapters/\(chapterName).playgroundchapter"
@@ -40,31 +48,31 @@ class PlaygroundBook {
         let imageReference = "nef-playground.png"
         
         return makeGeneralManifest(contentsPath: contentsPath, chapterPath: chapterPath, imageReference: imageReference)
-            .flatMap { _ in makeChapterManifest(chapterPath: chapterPath, pageName: pageName) }
-            .flatMap { _ in makePage(path: pagePath) }
-            .flatMap { _ in makePage(path: templatePagePath) }
-            .flatMap { _ in makeResources(path: resourcesPath, imageReference: imageReference, base64: AssetsBase64.imageReference) }
+            .flatMap { _ in self.makeChapterManifest(chapterPath: chapterPath, pageName: pageName) }
+            .flatMap { _ in self.makePage(path: pagePath) }
+            .flatMap { _ in self.makePage(path: templatePagePath) }
+            .flatMap { _ in self.makeResources(path: resourcesPath, imageReference: imageReference, base64: AssetsBase64.imageReference) }^
     }
     
-    private func makeGeneralManifest(contentsPath: String, chapterPath: String, imageReference: String) -> Result<Void, PlaygroundBookError> {
+    private func makeGeneralManifest(contentsPath: String, chapterPath: String, imageReference: String) -> Either<PlaygroundBookError, Void> {
         let manifest = Manifiest.general(chapterName: chapterPath.filename.removeExtension, imageReference: imageReference)
         return makeManifest(manifest: manifest, folderPath: contentsPath)
     }
     
-    private func makeChapterManifest(chapterPath: String, pageName: String) -> Result<Void, PlaygroundBookError> {
+    private func makeChapterManifest(chapterPath: String, pageName: String) -> Either<PlaygroundBookError, Void> {
         let manifest = Manifiest.chapter(pageName: pageName)
         return makeManifest(manifest: manifest, folderPath: chapterPath)
     }
     
-    private func makeManifest(manifest: String, folderPath: String) -> Result<Void, PlaygroundBookError> {
+    private func makeManifest(manifest: String, folderPath: String) -> Either<PlaygroundBookError, Void> {
         storage.createFolder(path: folderPath)
         let manifestResult = storage.createFile(withContent: manifest, atPath: "\(folderPath)/Manifest.plist")
         
         return manifestResult.flatMap { _ in .success(()) }
-                             .flatMapError { _ in .failure(PlaygroundBookError.manifest) }
+                             .flatMapError { _ in .failure(PlaygroundBookError.manifest) }.toEither()
     }
     
-    private func makePage(path pagePath: String) -> Result<Void, PlaygroundBookError> {
+    private func makePage(path pagePath: String) -> Either<PlaygroundBookError, Void> {
         let swiftCode = PlaygroundCode.header
         let manifest  = Manifiest.page(name: pagePath.filename.removeExtension)
         
@@ -76,28 +84,28 @@ class PlaygroundBook {
         let manifestResult = storage.createFile(withContent: manifest, atPath: "\(pagePath)/Manifest.plist")
                                     .flatMap { _ in .success(()) }.flatMapError { _ in .failure(PlaygroundBookError.page) }
         
-        return fileResult.flatMap { _ in manifestResult }
+        return fileResult.flatMap { _ in manifestResult }.toEither()
     }
     
-    private func makeResources(path resourcesPath: String, imageReference: String, base64: String) -> Result<Void, PlaygroundBookError> {
+    private func makeResources(path resourcesPath: String, imageReference: String, base64: String) -> Either<PlaygroundBookError, Void> {
         storage.createFolder(path: resourcesPath)
         guard let data = Data(base64Encoded: base64),
               let _ = try? data.write(to: URL(fileURLWithPath: "\(resourcesPath)/\(imageReference)")) else {
-            return .failure(.resource)
+            return .left(.resource)
         }
 
-        return .success(())
+        return .right(())
     }
     
     // MARK: private methods <modules>
-    private func addModules(_ modules: [Module]) -> Result<Void, PlaygroundBookError> {
+    private func addModules(_ modules: [Module]) -> Either<PlaygroundBookError, Void> {
         let modulesPath = "\(path)/Contents/UserModules"
         
-        return modules.reduce(.success(())) { (partial, module) in
+        return modules.reduce(.right(())) { (partial, module) in
             partial.flatMap { _ in
-                let destinationPath = createModuleFolder(module.name, in: modulesPath)
-                return copy(sources: module.sources, atPath: module.path, inModulePath: destinationPath)
-            }
+                let destinationPath = self.createModuleFolder(module.name, in: modulesPath)
+                return self.copy(sources: module.sources, atPath: module.path, inModulePath: destinationPath)
+            }^
         }
     }
     
@@ -109,14 +117,19 @@ class PlaygroundBook {
         return sourcesPath
     }
     
-    private func copy(sources: [String], atPath: String, inModulePath modulePath: String) -> Result<Void, PlaygroundBookError> {
-        return sources.reduce(.success(())) { (partial, source) in
-            partial.flatMap { _ in
-                let filePath = "\(atPath)/\(source)".resolvePath
-                return storage.copy(filePath, to: modulePath).flatMap { _ in .success(()) }
-                                                             .flatMapError { _ in .failure(.invalidModule) }
-            }
+    private func copy(sources: [String], atPath: String, inModulePath modulePath: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
+        return EnvIO { storage in
+            IO<PlaygroundBookError, Void>.fromEither(
+                sources.k().foldLeft(Either.right(())) { partial, source in
+                    self.copy("\(atPath)/\(source)".resolvePath, inModulePath: modulePath, using: storage)
+                }
+            )
         }
+    }
+    
+    private func copy(_ filePath: String, inModulePath modulePath: String, using storage: Storage) -> Either<PlaygroundBookError, Void> {
+        return storage.copy(filePath, to: modulePath).toEither()
+            .bimap({ _ in .invalidModule }, { _ in () })
     }
     
     // MARK: Constants <Code>

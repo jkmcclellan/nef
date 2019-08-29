@@ -10,6 +10,7 @@
 		1121CAC6231820F0007B834B /* BowEffects in Frameworks */ = {isa = PBXBuildFile; productRef = 1121CAC5231820F0007B834B /* BowEffects */; };
 		1121CAC8231820F0007B834B /* BowOptics in Frameworks */ = {isa = PBXBuildFile; productRef = 1121CAC7231820F0007B834B /* BowOptics */; };
 		1121CACA231820F0007B834B /* Bow in Frameworks */ = {isa = PBXBuildFile; productRef = 1121CAC9231820F0007B834B /* Bow */; };
+		1121CACC23182672007B834B /* EnvIO.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1121CACB23182672007B834B /* EnvIO.swift */; };
 		8B12D79F22D6235200D05A70 /* NefJekyll.h in Headers */ = {isa = PBXBuildFile; fileRef = 8B12D79D22D6235200D05A70 /* NefJekyll.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		8B12D7A422D6238300D05A70 /* Jekyll.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B3CB85522D392C000919F36 /* Jekyll.swift */; };
 		8B12D7B822D63EAD00D05A70 /* Common.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 8BF75F5722CA637B00EC53A1 /* Common.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -286,6 +287,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1121CACB23182672007B834B /* EnvIO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvIO.swift; sourceTree = "<group>"; };
 		8B0CA51622AE669600181BC0 /* Carbon */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = Carbon; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B12D79B22D6235200D05A70 /* NefJekyll.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = NefJekyll.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B12D79D22D6235200D05A70 /* NefJekyll.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NefJekyll.h; sourceTree = "<group>"; };
@@ -729,6 +731,7 @@
 				8B907C4723046EFE001495DE /* Module.swift */,
 				8BEF949A231593C400AFA4CC /* Assets.swift */,
 				8B907C4923046F15001495DE /* String+Extensions.swift */,
+				1121CACB23182672007B834B /* EnvIO.swift */,
 			);
 			path = iPad;
 			sourceTree = "<group>";
@@ -1269,6 +1272,7 @@
 				8B907C4A23046F15001495DE /* String+Extensions.swift in Sources */,
 				8B907C4C23047040001495DE /* ConsoleOutput.swift in Sources */,
 				8B907C4823046EFE001495DE /* Module.swift in Sources */,
+				1121CACC23182672007B834B /* EnvIO.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

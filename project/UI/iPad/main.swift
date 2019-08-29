@@ -18,10 +18,10 @@ func main() {
     let playground = Playground(packagePath: packagePath, projectName: projectName, outputPath: outputPath, console: console)
     let result = playground.build(cached: true)
     
-    if case let .failure(error) = result {
+    result.fold({ error in
         Console.error(information: error.information).show(output: console)
         exit(-1)
-    }
+    }, {})
 }
 
 // #: - MAIN <launcher>
