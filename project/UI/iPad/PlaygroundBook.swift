@@ -13,33 +13,27 @@ enum PlaygroundBookError: Error {
     case resource
 }
 
-extension Storage {
-    func copyIO(_ filePath: String, to modulePath: String) -> IO<StorageError, String> {
-        return IO.invoke { self.copy(filePath, to: modulePath) }
-    }
-}
-
 class PlaygroundBook {
     private let name: String
     private let path: String
-    private let storage: Storage
     
-    init(name: String, path: String, storage: Storage) {
+    init(name: String, path: String) {
         self.name = name
         self.path = path
-        self.storage = storage
     }
     
-    func create(withModules modules: [Module]) -> Either<PlaygroundBookError, Void> {
+    func create(withModules modules: [Module]) -> EnvIO<Storage, PlaygroundBookError, Void> {
         let chapterName = "Chapter \(name)"
         let pageName = name
         
-        return create(chapterName: chapterName, pageName: pageName)
-                .flatMap { _ in self.addModules(modules) }^
+        return binding(
+            |<-self.create(chapterName: chapterName, pageName: pageName),
+            |<-self.addModules(modules),
+            yield: ())^
     }
     
     // MARK: private methods <structure>
-    private func create(chapterName: String, pageName: String) -> Either<PlaygroundBookError, Void> {
+    private func create(chapterName: String, pageName: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
         let contentsPath = "\(path)/Contents"
         let resourcesPath = "\(contentsPath)/PrivateResources"
         let chapterPath = "\(contentsPath)/Chapters/\(chapterName).playgroundchapter"
@@ -47,89 +41,115 @@ class PlaygroundBook {
         let templatePagePath = "\(chapterPath)/Pages/Template.playgroundpage"
         let imageReference = "nef-playground.png"
         
-        return makeGeneralManifest(contentsPath: contentsPath, chapterPath: chapterPath, imageReference: imageReference)
-            .flatMap { _ in self.makeChapterManifest(chapterPath: chapterPath, pageName: pageName) }
-            .flatMap { _ in self.makePage(path: pagePath) }
-            .flatMap { _ in self.makePage(path: templatePagePath) }
-            .flatMap { _ in self.makeResources(path: resourcesPath, imageReference: imageReference, base64: AssetsBase64.imageReference) }^
+        return binding(
+            |<-self.makeGeneralManifest(contentsPath: contentsPath, chapterPath: chapterPath, imageReference: imageReference),
+            |<-self.makeChapterManifest(chapterPath: chapterPath, pageName: pageName),
+            |<-self.makePage(path: pagePath),
+            |<-self.makePage(path: templatePagePath),
+            |<-self.makeResources(path: resourcesPath, imageReference: imageReference, base64: AssetsBase64.imageReference),
+            yield: ())^
     }
     
-    private func makeGeneralManifest(contentsPath: String, chapterPath: String, imageReference: String) -> Either<PlaygroundBookError, Void> {
+    private func makeGeneralManifest(contentsPath: String, chapterPath: String, imageReference: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
         let manifest = Manifiest.general(chapterName: chapterPath.filename.removeExtension, imageReference: imageReference)
         return makeManifest(manifest: manifest, folderPath: contentsPath)
     }
     
-    private func makeChapterManifest(chapterPath: String, pageName: String) -> Either<PlaygroundBookError, Void> {
+    private func makeChapterManifest(chapterPath: String, pageName: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
         let manifest = Manifiest.chapter(pageName: pageName)
         return makeManifest(manifest: manifest, folderPath: chapterPath)
     }
     
-    private func makeManifest(manifest: String, folderPath: String) -> Either<PlaygroundBookError, Void> {
-        storage.createFolder(path: folderPath)
-        let manifestResult = storage.createFile(withContent: manifest, atPath: "\(folderPath)/Manifest.plist")
-        
-        return manifestResult.flatMap { _ in .success(()) }
-                             .flatMapError { _ in .failure(PlaygroundBookError.manifest) }.toEither()
-    }
-    
-    private func makePage(path pagePath: String) -> Either<PlaygroundBookError, Void> {
-        let swiftCode = PlaygroundCode.header
-        let manifest  = Manifiest.page(name: pagePath.filename.removeExtension)
-        
-        storage.createFolder(path: pagePath)
-        
-        let fileResult = storage.createFile(withContent: swiftCode, atPath: "\(pagePath)/main.swift")
-                                .flatMap { _ in .success(()) }.flatMapError { _ in .failure(PlaygroundBookError.page) }
-        
-        let manifestResult = storage.createFile(withContent: manifest, atPath: "\(pagePath)/Manifest.plist")
-                                    .flatMap { _ in .success(()) }.flatMapError { _ in .failure(PlaygroundBookError.page) }
-        
-        return fileResult.flatMap { _ in manifestResult }.toEither()
-    }
-    
-    private func makeResources(path resourcesPath: String, imageReference: String, base64: String) -> Either<PlaygroundBookError, Void> {
-        storage.createFolder(path: resourcesPath)
-        guard let data = Data(base64Encoded: base64),
-              let _ = try? data.write(to: URL(fileURLWithPath: "\(resourcesPath)/\(imageReference)")) else {
-            return .left(.resource)
+    private func makeManifest(manifest: String, folderPath: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
+        return EnvIO { storage in
+            IO.invokeEither {
+                storage.createFolder(path: folderPath)
+                let manifestResult = storage.createFile(withContent: manifest, atPath: "\(folderPath)/Manifest.plist")
+                
+                return manifestResult.flatMap { _ in .success(()) }
+                    .flatMapError { _ in .failure(PlaygroundBookError.manifest) }.toEither()
+            }
         }
-
-        return .right(())
+    }
+    
+    private func makePage(path pagePath: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
+        return EnvIO { storage in
+            IO.invokeEither {
+                let swiftCode = PlaygroundCode.header
+                let manifest  = Manifiest.page(name: pagePath.filename.removeExtension)
+                
+                storage.createFolder(path: pagePath)
+                
+                let fileResult = storage.createFile(withContent: swiftCode, atPath: "\(pagePath)/main.swift")
+                                        .flatMap { _ in .success(()) }.flatMapError { _ in .failure(PlaygroundBookError.page) }
+                
+                let manifestResult = storage.createFile(withContent: manifest, atPath: "\(pagePath)/Manifest.plist")
+                                            .flatMap { _ in .success(()) }.flatMapError { _ in .failure(PlaygroundBookError.page) }
+                
+                return fileResult.flatMap { _ in manifestResult }.toEither()
+            }
+        }
+    }
+    
+    private func makeResources(path resourcesPath: String, imageReference: String, base64: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
+        return EnvIO { storage in
+            IO.invokeEither {
+                storage.createFolder(path: resourcesPath)
+                guard let data = Data(base64Encoded: base64),
+                    let _ = try? data.write(to: URL(fileURLWithPath: "\(resourcesPath)/\(imageReference)")) else {
+                        return .left(.resource)
+                }
+                return .right(())
+            }
+        }
     }
     
     // MARK: private methods <modules>
-    private func addModules(_ modules: [Module]) -> Either<PlaygroundBookError, Void> {
+    private func addModules(_ modules: [Module]) -> EnvIO<Storage, PlaygroundBookError, Void> {
         let modulesPath = "\(path)/Contents/UserModules"
         
-        return modules.reduce(.right(())) { (partial, module) in
-            partial.flatMap { _ in
-                let destinationPath = self.createModuleFolder(module.name, in: modulesPath)
-                return self.copy(sources: module.sources, atPath: module.path, inModulePath: destinationPath)
+        return EnvIO { storage in
+            modules.k().foldLeft(IO<PlaygroundBookError, ()>.lazy()) { partial, module in
+                partial.forEffect(self.copy(module: module, modulesPath: modulesPath).invoke(storage))
             }^
         }
     }
     
-    private func createModuleFolder(_ name: String, in path: String) -> String {
-        let modulePath = "\(path)/\(name).playgroundmodule"
-        let sourcesPath = "\(modulePath)/Sources"
-        storage.createFolder(path: sourcesPath)
-        
-        return sourcesPath
+    private func copy(module: Module, modulesPath: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
+        let destinationPath = EnvIOPartial<Storage, PlaygroundBookError>.var(String.self)
+        return binding(
+            destinationPath <- self.createModuleFolder(module.name, in: modulesPath),
+                            |<-self.copy(sources: module.sources, atPath: module.path, inModulePath: destinationPath.get),
+            yield: ())^
+    }
+    
+    private func createModuleFolder(_ name: String, in path: String) -> EnvIO<Storage, PlaygroundBookError, String> {
+        return EnvIO { storage in
+            let modulePath = "\(path)/\(name).playgroundmodule"
+            let sourcesPath = "\(modulePath)/Sources"
+            return IO.invoke {
+                storage.createFolder(path: sourcesPath)
+                return sourcesPath
+            }
+        }
     }
     
     private func copy(sources: [String], atPath: String, inModulePath modulePath: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
         return EnvIO { storage in
-            IO<PlaygroundBookError, Void>.fromEither(
-                sources.k().foldLeft(Either.right(())) { partial, source in
-                    self.copy("\(atPath)/\(source)".resolvePath, inModulePath: modulePath, using: storage)
-                }
-            )
+            sources.k().foldLeft(IO<PlaygroundBookError, ()>.lazy()) { partial, source in
+                self.copy("\(atPath)/\(source)".resolvePath, inModulePath: modulePath).invoke(storage)
+            }
         }
     }
     
-    private func copy(_ filePath: String, inModulePath modulePath: String, using storage: Storage) -> Either<PlaygroundBookError, Void> {
-        return storage.copy(filePath, to: modulePath).toEither()
-            .bimap({ _ in .invalidModule }, { _ in () })
+    private func copy(_ filePath: String, inModulePath modulePath: String) -> EnvIO<Storage, PlaygroundBookError, Void> {
+        return EnvIO { storage in
+            IO.invokeEither {
+                storage.copy(filePath, to: modulePath)
+                    .toEither()
+                    .bimap(constant(.invalidModule), constant(()))
+            }
+        }
     }
     
     // MARK: Constants <Code>

@@ -2,6 +2,7 @@
 
 import Foundation
 import Common
+import BowEffects
 
 class iPadConsole: ConsoleOutput {
 
@@ -23,15 +24,15 @@ class iPadConsole: ConsoleOutput {
               """)
     }
     
-    func printStep(information: String) {
-        print(information, separator: " ", terminator: "")
+    func printStep<E: Error>(information: String) -> IO<E, ()> {
+        return IO.invoke { print(information, separator: " ", terminator: "") }
     }
     
-    func printSubstep(information: String) {
-        print("\t\(information)", separator: " ", terminator: "\n")
+    func printSubstep<E: Error>(information: String) -> IO<E, ()> {
+        return IO.invoke { print("\t\(information)", separator: " ", terminator: "\n") }
     }
     
-    func printStatus(success: Bool) {
-        print(" \(success ? "✅" : "❌")", separator: "", terminator: "\n")
+    func printStatus<E: Error>(success: Bool) -> IO<E, ()> {
+        return IO.invoke { print(" \(success ? "✅" : "❌")", separator: "", terminator: "\n") }
     }
 }

@@ -52,7 +52,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "--to &quot;/Users/miguelangel/Desktop&quot;"
+            argument = "--to &quot;/Users/tomasruizlopez/Desktop&quot;"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -60,7 +60,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "--package &quot;/Users/miguelangel/Desktop/Package.swift&quot;"
+            argument = "--package &quot;/Users/tomasruizlopez/Desktop/Package.swift&quot;"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

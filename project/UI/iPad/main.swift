@@ -15,8 +15,8 @@ func main() {
             return
     }
     
-    let playground = Playground(packagePath: packagePath, projectName: projectName, outputPath: outputPath, console: console)
-    let result = playground.build(cached: true)
+    let playground = Playground(packagePath: packagePath, projectName: projectName, outputPath: outputPath)
+    let result = playground.build(cached: true, console: console)
     
     result.fold({ error in
         Console.error(information: error.information).show(output: console)
